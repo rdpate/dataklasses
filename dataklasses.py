@@ -97,9 +97,9 @@ def frozen_delattr(self, name):
         raise AttributeError(f"frozen dataklass cannot delete field {name}")
     object.__delattr__(self, name)
 
-def dataklass(cls=None, *, frozen=False, iter=False, hash=False):
+def dataklass(cls=None, *, frozen=False, slots=True, iter=False, hash=False):
     if cls is None:
-        return partial(dataklass, frozen=frozen, iter=iter, hash=hash)
+        return partial(dataklass, frozen=frozen, slots=slots, iter=iter, hash=hash)
     fields = all_hints(cls)
     nfields = len(fields)
     clsdict = vars(cls)
@@ -110,16 +110,22 @@ def dataklass(cls=None, *, frozen=False, iter=False, hash=False):
     if frozen:
         cls.__init__ = frozen_init(cls.__init__)
         if "__setattr__" in clsdict or "__delattr__" in clsdict:
-            raise TypeError("frozen dataklass cannot use __setattr__ or __delattr__")
+            raise TypeError("dataklass(frozen=True) cannot use __setattr__ or __delattr__")
         cls.__setattr__ = frozen_setattr
         cls.__delattr__ = frozen_delattr
     if "__repr__" not in clsdict:
         cls.__repr__ = patch_attributes(make__repr__(nfields), fields, 2)
     if "__eq__" not in clsdict:
         cls.__eq__ = patch_attributes(make__eq__(nfields), fields, 1)
-    if iter and "__iter__" not in clsdict:
+    if iter:
+        if "__iter__" in clsdict:
+            raise TypeError("dataklass(iter=True) hides cls.__iter__")
         cls.__iter__ = patch_attributes(make__iter__(nfields), fields)
-    if hash and "__hash__" not in clsdict:
+    if hash:
+        if "__hash__" in clsdict:
+            raise TypeError("dataklass(hash=True) hides cls.__hash__")
         cls.__hash__ = patch_attributes(make__hash__(nfields), fields, 1)
     cls.__match_args__ = tuple(fields)
+    if slots and "__slots__" not in clsdict:
+        cls.__slots__ = cls.__match_args__
     return cls
