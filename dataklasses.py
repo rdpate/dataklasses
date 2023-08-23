@@ -1,3 +1,5 @@
+# (see https://github.com/rdpate/dataklasses regarding modifications)
+
 # dataklasses.py
 #
 #     https://github.com/dabeaz/dataklasses
