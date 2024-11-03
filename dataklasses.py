@@ -18,28 +18,37 @@ __all__ = ["dataklass", "unfreeze"]
 
 from functools import lru_cache, reduce, partial, wraps
 
+
 def codegen(func):
     @lru_cache
     def make_func_code(numfields):
         names = [f"_{n}" for n in range(numfields)]
         exec(func(names), globals(), d := {})
         return d.popitem()[1]
+
     return make_func_code
+
 
 def patch_args_and_attributes(func, fields, start=0):
     return type(func)(
         func.__code__.replace(
             co_names=(*func.__code__.co_names[:start], *fields),
-            co_varnames=("self", *fields)),
-        func.__globals__)
+            co_varnames=("self", *fields),
+        ),
+        func.__globals__,
+    )
+
 
 def patch_attributes(func, fields, start=0):
     return type(func)(
         func.__code__.replace(co_names=(*func.__code__.co_names[:start], *fields)),
-        func.__globals__)
+        func.__globals__,
+    )
+
 
 def all_hints(cls):
     return reduce(lambda x, y: getattr(y, "__annotations__", {}) | x, cls.__mro__, {})
+
 
 @codegen
 def make__init__(fields):
@@ -47,13 +56,16 @@ def make__init__(fields):
     code += "".join(f" self.{name} = {name}\n" for name in fields)
     return code
 
+
 @codegen
 def make__repr__(fields):
     return (
         "def __repr__(self):\n"
         " return f'{type(self).__name__}("
         + ", ".join("{self." + name + "!r}" for name in fields)
-        + ")'\n")
+        + ")'\n"
+    )
+
 
 @codegen
 def make__eq__(fields):
@@ -64,40 +76,55 @@ def make__eq__(fields):
         "  if self.__class__ is other.__class__:\n"
         f"    return ({selfvals},) == ({othervals},)\n"
         "  else:\n"
-        "    return NotImplemented\n")
+        "    return NotImplemented\n"
+    )
+
 
 @codegen
 def make__iter__(fields):
     return "def __iter__(self):\n" + "".join(
-        f"   yield self.{name}\n" for name in fields)
+        f"   yield self.{name}\n" for name in fields
+    )
+
 
 @codegen
 def make__hash__(fields):
     self_tuple = "(" + ",".join(f"self.{name}" for name in fields) + ",)"
     return f"def __hash__(self):\n    return hash({self_tuple})\n"
 
+
 class unfreeze:
     def __init__(self, obj):
         self.obj = obj
+
     def __enter__(self):
         object.__setattr__(self.obj, "_Frozen", False)
         return self.obj
+
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.obj._Frozen = True
+
+
 def frozen_init(func):
     @wraps(func)
     def wrapper(self, *args, **kwds):
         with unfreeze(self):
             func(self, *args, **kwds)
+
     return wrapper
+
+
 def frozen_setattr(self, name, value):
     if self._Frozen:
         raise AttributeError(f"frozen dataklass cannot assign field {name}")
     object.__setattr__(self, name, value)
+
+
 def frozen_delattr(self, name):
     if self._Frozen:
         raise AttributeError(f"frozen dataklass cannot delete field {name}")
     object.__delattr__(self, name)
+
 
 def dataklass(cls=None, *, frozen=False, slots=True, iter=False, hash=False):
     if cls is None:
@@ -112,7 +139,9 @@ def dataklass(cls=None, *, frozen=False, slots=True, iter=False, hash=False):
     if frozen:
         cls.__init__ = frozen_init(cls.__init__)
         if "__setattr__" in clsdict or "__delattr__" in clsdict:
-            raise TypeError("dataklass(frozen=True) cannot use __setattr__ or __delattr__")
+            raise TypeError(
+                "dataklass(frozen=True) cannot use __setattr__ or __delattr__"
+            )
         cls.__setattr__ = frozen_setattr
         cls.__delattr__ = frozen_delattr
     if "__repr__" not in clsdict:
