@@ -3,6 +3,7 @@
 import sys
 import time
 
+
 standard_template = """
 class C{n}:
     def __init__(self, a, b, c, d, e):
@@ -16,7 +17,7 @@ class C{n}:
         return f'C{n}({{self.a!r}}, {{self.b!r}}, {{self.c!r}}, {{self.d!r}}, {{self.e!r}})'
 
     def __eq__(self, other):
-        if self.__class__ is other.__class:
+        if self.__class__ is other.__class__:
             return (self.a, self.b, self.c, self.d, self.e) == (other.a, other.b, other.c, other.d, other.e)
         else:
             return NotImplemented
@@ -24,21 +25,21 @@ class C{n}:
 
 namedtuple_template = """
 class C{n}(NamedTuple):
-    a : int
-    b : int
-    c : int
-    d : int
-    e : int
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
 """
 
 dataclass_template = """
 @dataclass
 class C{n}:
-    a : int
-    b : int
-    c : int
-    d : int
-    e : int
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
 """
 
 attr_template = """
@@ -54,29 +55,28 @@ class C{n}:
 dataklass_template = """
 @dataklass
 class C{n}:
-    a : int
-    b : int
-    c : int
-    d : int
-    e : int
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
 """
 
 dataklass_frozen_template = """
 @dataklass(frozen=True)
 class C{n}:
-    a : int
-    b : int
-    c : int
-    d : int
-    e : int
+    a: int
+    b: int
+    c: int
+    d: int
+    e: int
 """
 
 
 def run_test(name, n):
     start = time.time()
     while n > 0:
-        import perftemp
-
+        __import__("perftemp")
         del sys.modules["perftemp"]
         n -= 1
     end = time.time()
@@ -90,7 +90,7 @@ def write_perftemp(count, template, setup):
             f.write(template.format(n=n))
 
 
-def main(reps):
+def run_all_tests(reps):
     write_perftemp(100, standard_template, "")
     run_test("standard classes", reps)
 
@@ -107,12 +107,12 @@ def main(reps):
         print("attrs not installed")
 
     write_perftemp(100, dataklass_template, "from dataklasses import dataklass\n")
-    run_test("dataklasses", reps)
+    run_test("dataklass", reps)
 
     write_perftemp(
         100, dataklass_frozen_template, "from dataklasses import dataklass\n"
     )
-    run_test("dataklasses[frozen]", reps)
+    run_test("dataklass(frozen=True)", reps)
 
 
 if __name__ == "__main__":
@@ -120,4 +120,4 @@ if __name__ == "__main__":
         reps = int(sys.argv[1])
     else:
         reps = 100
-    main(reps)
+    run_all_tests(reps)
