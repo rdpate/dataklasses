@@ -80,7 +80,7 @@ def run_test(name, n):
         del sys.modules["perftemp"]
         n -= 1
     end = time.time()
-    print(name, (end - start))
+    print(f"{name:26}  {end - start:,.3f}s")
 
 
 def write_perftemp(count, template, setup):
@@ -104,7 +104,7 @@ def run_all_tests(reps):
         write_perftemp(100, attr_template, "import attr\n")
         run_test("attrs", reps)
     except ImportError:
-        print("attrs not installed")
+        print("[attrs skipped: not installed]")
 
     write_perftemp(100, dataklass_template, "from dataklasses import dataklass\n")
     run_test("dataklass", reps)
